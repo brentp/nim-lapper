@@ -9,6 +9,8 @@ license       = "MIT"
 requires "nim >= 0.17.2" #, "nim-lang/c2nim>=0.9.13"
 srcDir = "src"
 
+skipFiles = @["bench.nim"]
+
 skipDirs = @["tests"]
 
 task test, "run the tests":

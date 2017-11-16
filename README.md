@@ -60,3 +60,6 @@ with positions ranging from 0 to 50 million and max lengths from 10 to 10M is:
 Note that this is a worst-case scenario as we could also 
 simulate a case where there are few long intervals instead of
 many large ones as in this case.
+
+Also note that testing for presence will be even faster than
+the above comparisons as it returns true as soon as an overlap is found.
