@@ -9,6 +9,11 @@
 ## and speed. In realistic tests queries returning the overlapping intervals are
 ## 500 times faster than brute force and queries that merely check for the overlaps
 ## are > 2500 times faster.
+## The main methods are `find` and `seek` where the latter uses a cursor and is 
+## very fast for cases when the queries are sorted. For both find and seek, if the
+## given intervals parameter is nil, the function will return a boolean indicating if
+## any intervals in the set overlap the query. This is much faster than modifying the
+## intervals.
 import algorithm
 
 type
@@ -22,6 +27,11 @@ type
     ## Lapper enables fast interval searches
     intervals: seq[T]
     max_len: int
+    # cursor is used internally by ordered find
+    cursor: int
+
+proc overlap*[T:Interval](a: T, start:int, stop:int): bool {.inline.} =
+  return a.start < stop and a.stop > start
 
 proc iv_cmp[T:Interval](a, b: T): int =
     if a.start < b.start: return -1
@@ -50,23 +60,64 @@ proc lowerBound[T:Interval](a: seq[T], start: int): int =
     else:
       count = step
 
-proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]) =
+proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop inclusive.
-  if ivs.len != 0: ivs.set_len(0)
+  ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
+  var vnil = ivs == nil
+  if not vnil and ivs.len != 0: ivs.set_len(0)
   var off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     var x = L.intervals[i]
-    if x.start <= stop and x.stop >= start: ivs.add(x)
+    if x.overlap(start, stop):
+      if not vnil:
+        ivs.add(x)
+      else:
+        return true
+    elif x.start > (stop + L.max_len): break
+  return if vnil: false else: len(ivs) > 0
+
+proc each_find*[T:Interval](L:Lapper[T], start:int, stop:int, fn: proc (v:T)) =
+  ## call fn(x) for each interval x in L that overlaps start..stop
+  var off = lowerBound(L.intervals, start - L.max_len)
+  for i in off..L.intervals.high:
+    var x = L.intervals[i]
+    if x.overlap(start, stop):
+      fn(x)
     elif x.start > (stop + L.max_len): break
 
-proc overlaps*[T:Interval](L:Lapper[T], start:int, stop:int): bool =
-  ## report whether any intervals in L overlap start .. stop inclusive.
-  var off = lowerBound(L.intervals, start - L.max_len)
-  for i in off..L.intervals.high:
+proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
+  ## fill ivs with all intervals in L that overlap start .. stop inclusive.
+  ## this method will work when queries to this lapper are in sorted (start) order
+  ## it uses a linear search from the last query instead of a binary search.
+  ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
+  var visnil = ivs == nil
+  if not visnil and ivs.len != 0: ivs.set_len(0)
+  if L.cursor == 0 or L.intervals[L.cursor].start > start:
+    L.cursor = lowerBound(L.intervals, start - L.max_len)
+  while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
+    L.cursor += 1
+  for i in L.cursor..L.intervals.high:
     var x = L.intervals[i]
-    if x.start <= stop and x.stop >= start: return true
+    if x.overlap(start, stop):
+      if not visnil:
+        ivs.add(x)
+      else:
+        return true
     elif x.start > (stop + L.max_len): break
   return false
+
+proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T)) =
+  ## call fn(x) for each interval x in L that overlaps start..stop
+  ## this assumes that subsequent calls to this function will be in sorted order
+  if L.cursor == 0 or L.intervals[L.cursor].start > start:
+    L.cursor = lowerBound(L.intervals, start - L.max_len)
+  while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
+    L.cursor += 1
+  for i in L.cursor..L.intervals.high:
+    var x = L.intervals[i]
+    if x.overlap(start, stop):
+      fn(x)
+    elif x.start > (stop + L.max_len): break
 
 when isMainModule:
 
@@ -80,10 +131,10 @@ when isMainModule:
   proc brute_force(ivs: seq[Interval], start:int, stop:int, res: var seq[Interval]) =
     if res.len != 0: res.set_len(0)
     for i in ivs:
-      if i.start <= stop and i.stop >= start: res.add(i)
+      if i.overlap(start, stop): res.add(i)
 
   ## example implementation
-  type myinterval = tuple[start:int, stop:int]
+  type myinterval = tuple[start:int, stop:int, val:int]
   proc start(m: myinterval): int {.inline.} = return m.start
   proc stop(m: myinterval): int {.inline.} = return m.stop
 
@@ -92,7 +143,7 @@ when isMainModule:
     for i in 0..<n:
       var s = randomi(0, range_max)
       var e = s + randomi(size_min, size_max)
-      var m:myinterval = (s, e)
+      var m:myinterval = (s, e, 0)
       result[i] = m
 
   var
@@ -122,7 +173,7 @@ when isMainModule:
   t = cpuTime()
   for k in 0..<ntimes:
     for iv in icopy:
-      lap.find(iv.start, iv.stop, res)
+      discard lap.find(iv.start, iv.stop, res)
       if len(res) == 0:
         echo "bad!!!"
   var lap_time = cpuTime() - t
@@ -130,27 +181,66 @@ when isMainModule:
 
   t = cpuTime()
   for k in 0..<ntimes:
+    for iv in intervals:
+      discard lap.seek(iv.start, iv.stop, res)
+      if len(res) == 0:
+        echo "bad!!!"
+  lap_time = cpuTime() - t
+  echo "time to do $# seek-searches ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
+
+  var iempty: seq[myinterval]
+  t = cpuTime()
+  for k in 0..<ntimes:
     for iv in icopy:
-      if not lap.overlaps(iv.start, iv.stop):
+      if not lap.find(iv.start, iv.stop, iempty):
         echo "bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
+
+  t = cpuTime()
+  for k in 0..<ntimes:
+    for iv in intervals:
+      if not lap.seek(iv.start, iv.stop, iempty):
+        echo "bad!!!"
+  lap_time = cpuTime() - t
+  echo "time to do $# seek-presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
 
   var brute_res = new_seq[myinterval]()
   var error = 0
 
   t = cpuTime()
+  var res2 = new_seq[myinterval](10)
+  var res3 = new_seq_of_cap[myinterval](10)
+  var res4 = new_seq_of_cap[myinterval](10)
+  proc do_each_find(m:myinterval) = res3.add(m)
+  proc do_each_seek(m:myinterval) = res4.add(m)
+  icopy.sort(iv_cmp)
+
   for iv in icopy:
     brute_force(icopy, iv.start, iv.stop, brute_res)
-    lap.find(iv.start, iv.stop, res)
+    discard lap.find(iv.start, iv.stop, res)
+    discard lap.seek(iv.start, iv.stop, res2)
+
+    res3.set_len(0)
+    lap.each_find(iv.start, iv.stop, do_each_find)
+
+    res4.set_len(0)
+    lap.each_seek(iv.start, iv.stop, do_each_seek)
+
+    if not lap.seek(iv.start, iv.stop, iempty):
+      echo "bad!! should have found it"
     sort(brute_res, iv_cmp)
     sort(res, iv_cmp)
+    sort(res2, iv_cmp)
+    sort(res3, iv_cmp)
+    sort(res4, iv_cmp)
+
     for i, b in brute_res:
-        if b.start != res[i].start:
-          echo "bad!!!"
+        if b.start != res[i].start or b.start != res2[i].start or b.start != res3[i].start or b.start != res4[i].start:
+          echo "bad!!! ", len(res), " ", len(res2)
           error = 1
-        if b.stop != res[i].stop:
-          echo "bad!!!"
+        if b.stop != res[i].stop or b.stop != res2[i].stop or res3[i].stop != b.stop or res4[i].stop != b.stop:
+          echo "bad!!! ", len(res), " ", len(res2)
           error = 1
   echo "time to check each result:", cpuTime() - t
   quit(error)

@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Brent Pedersen"
 description   = "fast, simple interval overlaps with binary search"
 license       = "MIT"
@@ -9,7 +9,7 @@ license       = "MIT"
 requires "nim >= 0.17.2" #, "nim-lang/c2nim>=0.9.13"
 srcDir = "src"
 
-skipFiles = @["bench.nim"]
+skipFiles = @["bench.nim", "example.nim"]
 
 skipDirs = @["tests"]
 
