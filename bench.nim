@@ -12,7 +12,7 @@ import times
 # define an appropriate data-type. it must have a `start(m) int` and `stop(m) int` method.
 #type myinterval = tuple[start:int, stop:int, val:int]
 # if we want to modify the result, then we have to use a ref object type
-type myinterval = ref object of RootObj
+type myinterval = ref object
   start: int
   stop: int
   val: int

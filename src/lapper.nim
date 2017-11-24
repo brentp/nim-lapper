@@ -60,6 +60,8 @@ proc lowerBound[T:Interval](a: seq[T], start: int): int =
     else:
       count = step
 
+proc len*[T:Interval](L:Lapper[T]): int = L.intervals.len
+
 proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop inclusive.
   ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
@@ -106,10 +108,10 @@ proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
     elif x.start > (stop + L.max_len): break
   return false
 
-proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T)) =
+proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T)) {.inline.} =
   ## call fn(x) for each interval x in L that overlaps start..stop
   ## this assumes that subsequent calls to this function will be in sorted order
-  if L.cursor == 0 or L.intervals[L.cursor].start > start:
+  if L.cursor == 0 or L.cursor >= L.intervals.high or L.intervals[L.cursor].start > start:
     L.cursor = lowerBound(L.intervals, start - L.max_len)
   while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
     L.cursor += 1
