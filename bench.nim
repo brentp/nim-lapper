@@ -39,7 +39,7 @@ proc make_random(n:int, range_max:int, size_min:int, size_max:int): seq[myinterv
     result[i] = m
 
 
-var n_intervals = 100000
+var n_intervals = 200000
 var range_max = 50000000 # 50M
 var res = new_seq[myinterval](100)
 
@@ -99,6 +99,8 @@ for max_length_pow in @[1, 2, 3, 4, 5, 6, 7]:
     var seek_speed_up = brute_time / lap_seek_time
     var seek_do_speed_up = brute_time / lap_seek_do_time
 
+    proc f(v:float64): string =
+      return formatFloat(v, ffDecimal, precision=2)
 
 
-    echo "|", pow(10'f64, max_length_pow.float64).int, "|", lap_time, "|", lap_seek_time, "|", brute_time, "|", speed_up , "|", seek_speed_up, "|", seek_do_speed_up, "|"
+    echo "|", pow(10'f64, max_length_pow.float64).int, "|", f(lap_time), "|", f(lap_seek_time), "|", f(brute_time), "|", f(speed_up) , "|", f(seek_speed_up), "|", f(seek_do_speed_up), "|"

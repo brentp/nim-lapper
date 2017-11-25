@@ -3,8 +3,8 @@ simple, fast interval searches for nim
 This uses a binary search in a sorted list of intervals along with knowledge of the longest interval.
 It works when the size of the largest interval is smaller than the average distance between intervals.
 As that ratio of largest-size::mean-distance increases, the performance decreases.
-On realistic (for my use-case) data, this is 500 times faster to query results and >2500
-times faster to check for presence than a brute-force method.
+On realistic (for my use-case) data, this is 1000 times faster to query results and >5000
+times faster to check for presence than a brute-force method. 
 
 Lapper also has a special case `seek` method when we know that the queries will be in order.
 This method uses a cursor to indicate that start of the last search and does a linear search
@@ -70,29 +70,26 @@ discard l.seek(50, 70, res)
 echo res
 #@[(start:40, stop:55, val:12), (start:50, stop:65, val:12), (start:60, stop:75, val:1)]
 
-
 ```
 
 
 ## Performance
 
 The output of running `bench.nim` (with -d:release) which generates *200K intervals*
-with positions ranging from 0 to 50 million and max lengths from 10 to 10M is:
+with positions ranging from 0 to 50 million and max lengths from 10 to 1M is:
 
 | max interval size | lapper time | lapper seek time | brute-force time | speedup | seek speedup | seek_do speedup |
 | ----------------- | ----------- | ---------------- | ---------------  | ------- | ------------ | --------------- |
-|10|0.02257|0.01700699999999999|76.39568|3384.832964111652|4492.013876639033|5007.254375040962|
-|100|0.02287899999999965|0.01534499999999994|72.81669000000001|3182.686743301767|4745.304007820156|5577.258731617381|
-|1000|0.02739600000000131|0.02180900000000108|74.54980999999998|2721.193239888904|3418.304828281732|2846.064365885287|
-|10000|0.05386900000000239|0.06077499999999958|73.23878999999998|1359.572110118932|1205.080872069115|2615.29745750614|
-|100000|0.3015420000000013|0.2950440000000008|74.62886999999998|247.4907973018672|252.9414934721594|664.8037093455218|
-|1000000|3.283310999999998|3.403959999999998|79.87128000000006|24.32644364179943|23.46422402143389|65.28466255963777|
-|10000000|76.22971600000001|79.086713|147.3813899999999|1.933385006970246|1.863541730454772|3.983509485787777|
-
+|10|0.06|0.04|387.44|6983.81|9873.11|9681.66|
+|100|0.05|0.04|384.92|7344.32|10412.97|15200.84|
+|1000|0.06|0.05|375.37|6250.23|7942.50|15703.24|
+|10000|0.15|0.14|377.29|2554.61|2702.13|15942.76|
+|100000|0.99|0.99|377.88|383.36|381.37|16241.61|
+|1000000|12.52|12.53|425.61|34.01|33.96|17762.58|
 
 Note that this is a worst-case scenario as we could also 
 simulate a case where there are few long intervals instead of
-many large ones as in this case.
+many large ones as in this case. Even so, we get a 34X speedup with `lapper`.
 
 Also note that testing for presence will be even faster than
 the above comparisons as it returns true as soon as an overlap is found.

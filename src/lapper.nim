@@ -4,8 +4,8 @@
 ## where that is not the case, this method will not perform well. For cases where this holds true (as it often
 ## does with genomic data), we can sort by start and use binary search on the starts, accounting for the length
 ## of the longest interval. The advantage of this approach is simplicity of implementation and speed. In realistic
-## tests queries returning the overlapping intervals are 500 times faster than brute force and queries that merely
-## check for the overlaps are > 2500 times faster.
+## tests queries returning the overlapping intervals are 1000 times faster than brute force and queries that merely
+## check for the overlaps are > 5000 times faster.
 ##
 ## The main methods are `find` and `seek` where the latter uses a cursor and is very fast for cases when the queries
 ## are sorted. This is another innovation in this library that allows an addition ~50% speed improvement when
