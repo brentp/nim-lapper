@@ -17,4 +17,4 @@ task test, "run the tests":
   exec "nim c -d:release --lineDir:on -r src/lapper"
 
 task docs, "make docs":
-  exec "nim doc2 src/lapper; mkdir -p docs; mv hts.html docs/index.html"
+  exec "nim doc2 src/lapper; mkdir -p docs; mv lapper.html docs/index.html"

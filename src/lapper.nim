@@ -1,19 +1,76 @@
-## This module provides a simple data-structure for fast interval searches.
-## It does not use an interval tree, instead, it operates on the assumption that
-## most intervals are of similar length; or, more exactly, that the longest interval
-## in the set is not long compared to the average distance between intervals. On
-## any dataset where that is not the case, this method will not perform well.
-## For cases where this holds true (as it often does with genomic data), we can
-## sort by start and use binary search on the starts, accounting for the length
-## of the longest interval. The advantage of this approach is simplicity of implementation
-## and speed. In realistic tests queries returning the overlapping intervals are
-## 500 times faster than brute force and queries that merely check for the overlaps
-## are > 2500 times faster.
-## The main methods are `find` and `seek` where the latter uses a cursor and is 
-## very fast for cases when the queries are sorted. For both find and seek, if the
-## given intervals parameter is nil, the function will return a boolean indicating if
+## This module provides a simple data-structure for fast interval searches. It does not use an interval tree,
+## instead, it operates on the assumption that most intervals are of similar length; or, more exactly, that the
+## longest interval in the set is not long compared to the average distance between intervals. On any dataset
+## where that is not the case, this method will not perform well. For cases where this holds true (as it often
+## does with genomic data), we can sort by start and use binary search on the starts, accounting for the length
+## of the longest interval. The advantage of this approach is simplicity of implementation and speed. In realistic
+## tests queries returning the overlapping intervals are 500 times faster than brute force and queries that merely
+## check for the overlaps are > 2500 times faster.
+##
+## The main methods are `find` and `seek` where the latter uses a cursor and is very fast for cases when the queries
+## are sorted. This is another innovation in this library that allows an addition ~50% speed improvement when
+## consecutive queries are known to be in sort order.
+##
+## For both find and seek, if the given intervals parameter is nil, the function will return a boolean indicating if
 ## any intervals in the set overlap the query. This is much faster than modifying the
 ## intervals.
+##
+## The example below shows off most of the API of `Lapper`.
+##
+## .. code-block:: nim
+##   import lapper
+##   type myinterval = ref object
+##      start: int
+##      stop: int
+##      val: int
+##    
+##    proc start(m: myinterval): int {.inline.} = return m.start
+##    proc stop(m: myinterval): int {.inline.} = return m.stop
+##    proc `$`(m:myinterval): string = return "(start:$#, stop:$#, val:$#)" % [$m.start, $m.stop, $m.val]
+##    
+##  create some fake data
+## .. code-block:: nim
+##  var ivs = new_seq[myinterval]()
+##  for i in countup(0, 100, 10):
+##    ivs.add(myinterval(start:i, stop:i + 15, val:0))
+
+##  make the Lapper "data-structure"
+
+## .. code-block:: nim
+##  l = lapify(ivs)
+##  empty:seq[myinterval]
+    
+## .. code-block:: nim
+##  l.find(10, 20, empty)
+##  notfound = not l.find(200, 300, empty)
+##  assert notfound
+    
+## .. code-block:: nim
+##  res = new_seq[myinterval]()
+ 
+##  find is the more general case, l.seek gives a speed benefit when consecutive queries are in order.
+
+## .. code-block:: nim
+##  echo l.find(50, 70, res)
+##  echo res
+##  # @[(start: 40, stop: 55, val:0), (start: 50, stop: 65, val: 0), (start: 60, stop: 75, val: 0), (start: 70, stop: 85, val: 0)]
+##  for r in res:
+##     r.val += 1
+ 
+## or we can do a function on each overlapping interval
+
+## .. code-block:: nim
+##   l.each_seek(50, 60, proc(a:myinterval) = inc(a.val))
+
+## or
+
+## .. code-block:: nim
+##   l.each_find(50, 60, proc(a:myinterval) = a.val += 10)
+ 
+## .. code-block:: nim
+##   discard l.seek(50, 70, res)
+##   echo res
+##   # @[(start:40, stop:55, val:12), (start:50, stop:65, val:12), (start:60, stop:75, val:1)]
 import algorithm
 
 type
@@ -27,10 +84,10 @@ type
     ## Lapper enables fast interval searches
     intervals: seq[T]
     max_len: int
-    # cursor is used internally by ordered find
-    cursor: int
+    cursor: int ## `cursor` is used internally by ordered find
 
 proc overlap*[T:Interval](a: T, start:int, stop:int): bool {.inline.} =
+  ## overlap returns true if half-open intervals overlap
   return a.start < stop and a.stop > start
 
 proc iv_cmp[T:Interval](a, b: T): int =
@@ -39,7 +96,7 @@ proc iv_cmp[T:Interval](a, b: T): int =
     return cmp(a.stop, b.stop)
 
 proc lapify*[T:Interval](ivs:var seq[T]): Lapper[T] =
-  ## create a new Lapper object
+  ## create a new Lapper object; ivs will be sorted.
   sort(ivs, iv_cmp)
   var l = Lapper[T](max_len: 0, intervals:ivs)
   for iv in ivs:
@@ -60,10 +117,12 @@ proc lowerBound[T:Interval](a: seq[T], start: int): int =
     else:
       count = step
 
-proc len*[T:Interval](L:Lapper[T]): int = L.intervals.len
+proc len*[T:Interval](L:Lapper[T]): int =
+  ## len returns the number of intervals in the Lapper
+  L.intervals.len
 
 proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
-  ## fill ivs with all intervals in L that overlap start .. stop inclusive.
+  ## fill ivs with all intervals in L that overlap start .. stop.
   ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
   var vnil = ivs == nil
   if not vnil and ivs.len != 0: ivs.set_len(0)
@@ -135,7 +194,7 @@ when isMainModule:
     for i in ivs:
       if i.overlap(start, stop): res.add(i)
 
-  ## example implementation
+  # example implementation
   type myinterval = tuple[start:int, stop:int, val:int]
   proc start(m: myinterval): int {.inline.} = return m.start
   proc stop(m: myinterval): int {.inline.} = return m.stop

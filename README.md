@@ -11,6 +11,8 @@ This method uses a cursor to indicate that start of the last search and does a l
 from that cursor to find matching intervals. This gives an additional 2-fold speedup over
 the `find` method.
 
+API docs and examples in `nim-doc` format are available [here](https://brentp.github.io/nim-lapper/index.html)
+
 See the `Performance` section for how large the intervals can be and still get a performance
 benefit.
 
