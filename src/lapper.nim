@@ -134,7 +134,7 @@ proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
         ivs.add(x)
       else:
         return true
-    elif x.start > (stop + L.max_len): break
+    elif x.start >= stop: break
   return if vnil: false else: len(ivs) > 0
 
 proc each_find*[T:Interval](L:Lapper[T], start:int, stop:int, fn: proc (v:T)) =
@@ -144,7 +144,7 @@ proc each_find*[T:Interval](L:Lapper[T], start:int, stop:int, fn: proc (v:T)) =
     var x = L.intervals[i]
     if x.overlap(start, stop):
       fn(x)
-    elif x.start > (stop + L.max_len): break
+    elif x.start >= stop: break
 
 proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop inclusive.
@@ -164,7 +164,7 @@ proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
         ivs.add(x)
       else:
         return true
-    elif x.start > (stop + L.max_len): break
+    elif x.start >= stop: break
   return false
 
 proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T)) {.inline.} =
@@ -178,7 +178,7 @@ proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T))
     var x = L.intervals[i]
     if x.overlap(start, stop):
       fn(x)
-    elif x.start > (stop + L.max_len): break
+    elif x.start >= stop: break
 
 when isMainModule:
 

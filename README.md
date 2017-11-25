@@ -19,6 +19,8 @@ benefit.
 To use this, it's simply required that your type have a `start(m) int` and `stop(m) int` method to satisfy
 the [concept](https://nim-lang.org/docs/manual.html#generics-concepts) used by `Lapper`
 
+You can install this with `nimble install lapper`.
+
 ## Example
 
 ```nim

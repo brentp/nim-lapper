@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.1"
+version       = "0.1.2"
 author        = "Brent Pedersen"
 description   = "fast, simple interval overlaps with binary search"
 license       = "MIT"
