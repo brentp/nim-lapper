@@ -44,8 +44,8 @@ var range_max = 50000000 # 50M
 var res = new_seq[myinterval](100)
 
 echo "# generating and searching $#K random intervals in the domain of 0..$#M" % [$(n_intervals / 1000).int, $(range_max / 1000000).int]
-echo "| max interval size | lapper time | lapper seek time | brute-force time | speedup | seek speedup | seek_do speedup |"
-echo "| ----------------- | ----------- | ---------------- | ---------------  | ------- | ------------ | --------------- |"
+echo "| max interval size | brute-force time | lapper time | lapper seek time | speedup | seek speedup | each_seek speedup |"
+echo "| ----------------- | ---------------- | ----------- | ---------------  | ------- | ------------ | ----------------- |"
 proc doit(m:myinterval) =
   discard m
 
@@ -62,28 +62,31 @@ for max_length_pow in @[1, 2, 3, 4, 5, 6, 7]:
     var icopy = ivs
 
     var t = cpuTime()
-    var l = lapify(ivs)
-    for iv in icopy:
-      discard l.find(iv.start, iv.stop, res)
-      if len(res) == 0:
-          stderr.write_line "WTF!!!"
-          quit(2)
-    var lap_time = cpuTime() - t
+    for itry in 0..10:
+      var l = lapify(ivs)
+      for iv in icopy:
+        discard l.find(iv.start, iv.stop, res)
+        if len(res) == 0:
+            stderr.write_line "WTF!!!"
+            quit(2)
+    var lap_time = (cpuTime() - t)/10
 
     t = cpuTime()
-    l = lapify(ivs)
-    for iv in ivs:
-      discard l.seek(iv.start, iv.stop, res)
-      if len(res) == 0:
-          stderr.write_line "WTF!!!"
-          quit(2)
-    var lap_seek_time = cpuTime() - t
+    for itry in 0..10:
+      var l = lapify(ivs)
+      for iv in ivs:
+        discard l.seek(iv.start, iv.stop, res)
+        if len(res) == 0:
+            stderr.write_line "WTF!!!"
+            quit(2)
+    var lap_seek_time = (cpuTime() - t)/10
 
     t = cpuTime()
-    l = lapify(ivs)
-    for iv in ivs:
-      l.each_seek(iv.start, iv.stop, doit)
-    var lap_seek_do_time = cpuTime() - t
+    for itry in 0..10:
+      var l = lapify(ivs)
+      for iv in ivs:
+        l.each_seek(iv.start, iv.stop, doit)
+    var lap_seek_do_time = (cpuTime() - t) / 10
 
     t = cpuTime()
     # brute force is too slow so do 1/10th of intervals then multiply time
@@ -95,12 +98,12 @@ for max_length_pow in @[1, 2, 3, 4, 5, 6, 7]:
           stderr.write_line "brute WTF!!!"
           quit(2)
     var brute_time = brute_step.float64 * (cpuTime() - t)
+
     var speed_up = brute_time / lap_time
     var seek_speed_up = brute_time / lap_seek_time
     var seek_do_speed_up = brute_time / lap_seek_do_time
 
-    proc f(v:float64): string =
-      return formatFloat(v, ffDecimal, precision=2)
+    proc f(v:float64, precision:int=2): string =
+      return formatFloat(v, ffDecimal, precision=precision)
 
-
-    echo "|", pow(10'f64, max_length_pow.float64).int, "|", f(lap_time), "|", f(lap_seek_time), "|", f(brute_time), "|", f(speed_up) , "|", f(seek_speed_up), "|", f(seek_do_speed_up), "|"
+    echo "|", pow(10'f64, max_length_pow.float64).int, "|", f(brute_time), "|", f(lap_time, 3), "|", f(lap_seek_time, 3), "|", f(speed_up) , "|", f(seek_speed_up), "|", f(seek_do_speed_up), "|"

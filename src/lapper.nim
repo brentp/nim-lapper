@@ -123,19 +123,14 @@ proc len*[T:Interval](L:Lapper[T]): int =
 
 proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop.
-  ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
-  var vnil = ivs == nil
-  if not vnil and ivs.len != 0: ivs.set_len(0)
+  if ivs.len != 0: ivs.set_len(0)
   var off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     var x = L.intervals[i]
     if x.overlap(start, stop):
-      if not vnil:
-        ivs.add(x)
-      else:
-        return true
+      ivs.add(x)
     elif x.start >= stop: break
-  return if vnil: false else: len(ivs) > 0
+  return len(ivs) > 0
 
 proc each_find*[T:Interval](L:Lapper[T], start:int, stop:int, fn: proc (v:T)) =
   ## call fn(x) for each interval x in L that overlaps start..stop
@@ -151,8 +146,7 @@ proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
   ## this method will work when queries to this lapper are in sorted (start) order
   ## it uses a linear search from the last query instead of a binary search.
   ## if ivs is nil, then this will just return true if it finds an interval and false otherwise
-  var visnil = ivs == nil
-  if not visnil and ivs.len != 0: ivs.set_len(0)
+  if ivs.len != 0: ivs.set_len(0)
   if L.cursor == 0 or L.intervals[L.cursor].start > start:
     L.cursor = lowerBound(L.intervals, start - L.max_len)
   while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
@@ -160,12 +154,9 @@ proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
   for i in L.cursor..L.intervals.high:
     var x = L.intervals[i]
     if x.overlap(start, stop):
-      if not visnil:
-        ivs.add(x)
-      else:
-        return true
+      ivs.add(x)
     elif x.start >= stop: break
-  return false
+  return ivs.len != 0
 
 proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T)) {.inline.} =
   ## call fn(x) for each interval x in L that overlaps start..stop
@@ -208,8 +199,8 @@ when isMainModule:
       result[i] = m
 
   var
-    N = 200000
-    ntimes = 100
+    N = 100000
+    ntimes = 40
     brute_step = 10
 
   var intervals = make_random(N, 50000000, 500, 20000)
@@ -236,7 +227,7 @@ when isMainModule:
     for iv in icopy:
       discard lap.find(iv.start, iv.stop, res)
       if len(res) == 0:
-        echo "bad!!!"
+        echo "0 bad!!!"
   var lap_time = cpuTime() - t
   echo "time to do $# searches ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
 
@@ -245,7 +236,7 @@ when isMainModule:
     for iv in intervals:
       discard lap.seek(iv.start, iv.stop, res)
       if len(res) == 0:
-        echo "bad!!!"
+        echo "1 bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# seek-searches ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
 
@@ -254,7 +245,7 @@ when isMainModule:
   for k in 0..<ntimes:
     for iv in icopy:
       if not lap.find(iv.start, iv.stop, iempty):
-        echo "bad!!!"
+        echo "2 bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
 
@@ -262,7 +253,7 @@ when isMainModule:
   for k in 0..<ntimes:
     for iv in intervals:
       if not lap.seek(iv.start, iv.stop, iempty):
-        echo "bad!!!"
+        echo "3 bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# seek-presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
 
@@ -289,7 +280,7 @@ when isMainModule:
     lap.each_seek(iv.start, iv.stop, do_each_seek)
 
     if not lap.seek(iv.start, iv.stop, iempty):
-      echo "bad!! should have found it"
+      echo "4 bad!! should have found it"
     sort(brute_res, iv_cmp)
     sort(res, iv_cmp)
     sort(res2, iv_cmp)
@@ -298,10 +289,10 @@ when isMainModule:
 
     for i, b in brute_res:
         if b.start != res[i].start or b.start != res2[i].start or b.start != res3[i].start or b.start != res4[i].start:
-          echo "bad!!! ", len(res), " ", len(res2)
+          echo "5 bad!!! ", len(res), " ", len(res2)
           error = 1
         if b.stop != res[i].stop or b.stop != res2[i].stop or res3[i].stop != b.stop or res4[i].stop != b.stop:
-          echo "bad!!! ", len(res), " ", len(res2)
+          echo "6 bad!!! ", len(res), " ", len(res2)
           error = 1
   echo "time to check each result:", cpuTime() - t
   quit(error)

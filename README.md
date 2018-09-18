@@ -78,8 +78,8 @@ echo res
 The output of running `bench.nim` (with -d:release) which generates *200K intervals*
 with positions ranging from 0 to 50 million and max lengths from 10 to 1M is:
 
-| max interval size | lapper time | lapper seek time | brute-force time | speedup | seek speedup | seek_do speedup |
-| ----------------- | ----------- | ---------------- | ---------------  | ------- | ------------ | --------------- |
+| max interval size | lapper time | lapper seek time | brute-force time | speedup | seek speedup | each-seek speedup |
+| ----------------- | ----------- | ---------------- | ---------------  | ------- | ------------ | ----------------- |
 |10|0.06|0.04|387.44|6983.81|9873.11|9681.66|
 |100|0.05|0.04|384.92|7344.32|10412.97|15200.84|
 |1000|0.06|0.05|375.37|6250.23|7942.50|15703.24|
