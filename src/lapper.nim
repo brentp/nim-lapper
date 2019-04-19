@@ -83,7 +83,7 @@ type
   Lapper*[T] = object
     ## Lapper enables fast interval searches
     intervals: seq[T]
-    max_len: int
+    max_len*: int
     cursor: int ## `cursor` is used internally by ordered find
 
 proc overlap*[T:Interval](a: T, start:int, stop:int): bool {.inline.} =
@@ -104,7 +104,7 @@ proc lapify*[T:Interval](ivs:var seq[T]): Lapper[T] =
       l.max_len = iv.stop - iv.start
   return l
 
-proc lowerBound[T:Interval](a: seq[T], start: int): int =
+proc lowerBound[T:Interval](a: var seq[T], start: int): int =
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -121,9 +121,10 @@ proc len*[T:Interval](L:Lapper[T]): int =
   ## len returns the number of intervals in the Lapper
   L.intervals.len
 
-proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
+proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop.
   if ivs.len != 0: ivs.set_len(0)
+  shallow(L.intervals)
   var off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     var x = L.intervals[i]
@@ -132,7 +133,16 @@ proc find*[T:Interval](L:Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
     elif x.start >= stop: break
   return len(ivs) > 0
 
-proc each_find*[T:Interval](L:Lapper[T], start:int, stop:int, fn: proc (v:T)) =
+proc count*[T:Interval](L:var Lapper[T], start:int, stop:int): int =
+  ## fill ivs with all intervals in L that overlap start .. stop.
+  var off = lowerBound(L.intervals, start - L.max_len)
+  for i in off..L.intervals.high:
+    var x = L.intervals[i]
+    if x.overlap(start, stop):
+      result.inc
+    elif x.start >= stop: break
+
+proc each_find*[T:Interval](L:var Lapper[T], start:int, stop:int, fn: proc (v:T)) =
   ## call fn(x) for each interval x in L that overlaps start..stop
   var off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
