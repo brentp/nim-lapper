@@ -181,6 +181,9 @@ proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T))
       fn(x)
     elif x.start >= stop: break
 
+iterator items*[T:Interval](L: Lapper[T]): T =
+  for i in L.intervals: yield i
+
 when isMainModule:
 
   import random
