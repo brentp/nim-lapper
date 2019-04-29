@@ -177,9 +177,9 @@ proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T))
     L.cursor += 1
   for i in L.cursor..L.intervals.high:
     var x = L.intervals[i]
-    if x.overlap(start, stop):
+    if x.start >= stop: break
+    elif x.stop > start:
       fn(x)
-    elif x.start >= stop: break
 
 iterator items*[T:Interval](L: Lapper[T]): T =
   for i in L.intervals: yield i
@@ -269,6 +269,17 @@ when isMainModule:
         echo "3 bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# seek-presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
+
+  t = cpuTime()
+  for k in 0..<ntimes:
+    for iv in intervals:
+      var n = 0
+      lap.each_seek(iv.start, iv.stop, (proc(f:myinterval) = (if iv.start == f.start: n.inc)))
+      if n == 0:
+        echo "4 bad!!!"
+  lap_time = cpuTime() - t
+  echo "time to do $# each-seek-presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
+
 
   var brute_res = new_seq[myinterval]()
   var error = 0
