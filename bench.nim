@@ -89,8 +89,8 @@ for max_length_pow in @[1, 2, 3, 4, 5, 6, 7]:
     var lap_seek_do_time = (cpuTime() - t) / 10
 
     t = cpuTime()
+    var brute_step = 10000
     # brute force is too slow so do 1/10th of intervals then multiply time
-    var brute_step = 10
     for i in countup(0, icopy.high, brute_step):
       var iv = icopy[i]
       brute_force(icopy, iv.start, iv.stop, res)

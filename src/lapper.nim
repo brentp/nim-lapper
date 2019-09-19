@@ -86,9 +86,10 @@ type
     max_len*: int
     cursor: int ## `cursor` is used internally by ordered find
 
-proc overlap*[T:Interval](a: T, start:int, stop:int): bool {.inline.} =
+template overlap*[T:Interval](a: T, start:int, stop:int): bool =
   ## overlap returns true if half-open intervals overlap
-  return a.start < stop and a.stop > start
+  #return a.start < stop and a.stop > start
+  a.stop > start and a.start < stop
 
 proc iv_cmp[T:Interval](a, b: T): int =
     if a.start < b.start: return -1
@@ -111,33 +112,41 @@ proc lowerBound[T:Interval](a: var seq[T], start: int): int =
   while count != 0:
     step = count div 2
     pos = result + step
-    if cmp(a[pos].start, start) < 0:
+    if a[pos].start < start:
       result = pos + 1
       count -= step + 1
     else:
       count = step
 
-proc len*[T:Interval](L:Lapper[T]): int =
+proc len*[T:Interval](L:Lapper[T]): int {.inline.} =
   ## len returns the number of intervals in the Lapper
   L.intervals.len
 
 proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop.
-  if ivs.len != 0: ivs.set_len(0)
+  #if ivs.len != 0: ivs.set_len(0)
   shallow(L.intervals)
   var off = lowerBound(L.intervals, start - L.max_len)
+  var n = 0
   for i in off..L.intervals.high:
     var x = L.intervals[i]
     if x.overlap(start, stop):
-      ivs.add(x)
+      if n < ivs.len:
+        ivs[n] = x
+      else:
+        ivs.add(x)
+      n += 1
     elif x.start >= stop: break
+  if ivs.len > n:
+    ivs.setLen(n)
   return len(ivs) > 0
 
 proc count*[T:Interval](L:var Lapper[T], start:int, stop:int): int =
   ## fill ivs with all intervals in L that overlap start .. stop.
+  shallow(L.intervals)
   var off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
-    var x = L.intervals[i]
+    let x = L.intervals[i]
     if x.overlap(start, stop):
       result.inc
     elif x.start >= stop: break
@@ -191,7 +200,7 @@ when isMainModule:
   import strutils
 
   proc randomi(imin:int, imax:int): int =
-      return imin + random(imax - imin)
+      return imin + rand(imax - imin)
 
   proc brute_force(ivs: seq[Interval], start:int, stop:int, res: var seq[Interval]) =
     if res.len != 0: res.set_len(0)
@@ -223,7 +232,7 @@ when isMainModule:
   var t = cpuTime()
   var res = new_seq[myinterval]()
 
-  for i in countup(0, intervals.len, brute_step):
+  for i in countup(0, intervals.len - brute_step, brute_step):
     var iv = intervals[i]
     brute_force(intervals, iv.start, iv.stop, res)
 
@@ -257,7 +266,7 @@ when isMainModule:
   t = cpuTime()
   for k in 0..<ntimes:
     for iv in icopy:
-      if not lap.find(iv.start, iv.stop, iempty):
+      if 0 == lap.count(iv.start, iv.stop):
         echo "2 bad!!!"
   lap_time = cpuTime() - t
   echo "time to do $# presence tests ($# reps) in Lapper:" % [$(N * ntimes), $ntimes], lap_time, " speedup:", (brute_time * float64(brute_step)) / (lap_time / float64(ntimes))
