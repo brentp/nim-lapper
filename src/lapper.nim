@@ -91,10 +91,12 @@ template overlap*[T:Interval](a: T, start:int, stop:int): bool =
   #return a.start < stop and a.stop > start
   a.stop > start and a.start < stop
 
+
 proc iv_cmp[T:Interval](a, b: T): int =
     if a.start < b.start: return -1
     if b.start < a.start: return 1
     return cmp(a.stop, b.stop)
+
 
 proc lapify*[T:Interval](ivs:var seq[T]): Lapper[T] =
   ## create a new Lapper object; ivs will be sorted.
@@ -121,6 +123,9 @@ proc lowerBound[T:Interval](a: var seq[T], start: int): int =
 proc len*[T:Interval](L:Lapper[T]): int {.inline.} =
   ## len returns the number of intervals in the Lapper
   L.intervals.len
+
+proc empty*[T:Interval](L:Lapper[T]): bool {.inline.} =
+  return L.intervals.len == 0
 
 proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop.
