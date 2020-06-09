@@ -101,11 +101,10 @@ proc iv_cmp[T:Interval](a, b: T): int =
 proc lapify*[T:Interval](ivs:var seq[T]): Lapper[T] =
   ## create a new Lapper object; ivs will be sorted.
   sort(ivs, iv_cmp)
-  var l = Lapper[T](max_len: 0, intervals:ivs)
+  result = Lapper[T](max_len: 0, intervals:ivs)
   for iv in ivs:
-    if iv.stop - iv.start > l.max_len:
-      l.max_len = iv.stop - iv.start
-  return l
+    if iv.stop - iv.start > result.max_len:
+      result.max_len = iv.stop - iv.start
 
 proc lowerBound[T:Interval](a: var seq[T], start: int): int =
   result = a.low
@@ -131,10 +130,10 @@ proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
   ## fill ivs with all intervals in L that overlap start .. stop.
   #if ivs.len != 0: ivs.set_len(0)
   shallow(L.intervals)
-  var off = lowerBound(L.intervals, start - L.max_len)
+  let off = lowerBound(L.intervals, start - L.max_len)
   var n = 0
   for i in off..L.intervals.high:
-    var x = L.intervals[i]
+    let x = L.intervals[i]
     if x.overlap(start, stop):
       if n < ivs.len:
         ivs[n] = x
@@ -149,7 +148,7 @@ proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
 proc count*[T:Interval](L:var Lapper[T], start:int, stop:int): int =
   ## fill ivs with all intervals in L that overlap start .. stop.
   shallow(L.intervals)
-  var off = lowerBound(L.intervals, start - L.max_len)
+  let off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     let x = L.intervals[i]
     if x.overlap(start, stop):
@@ -158,9 +157,9 @@ proc count*[T:Interval](L:var Lapper[T], start:int, stop:int): int =
 
 proc each_find*[T:Interval](L:var Lapper[T], start:int, stop:int, fn: proc (v:T)) =
   ## call fn(x) for each interval x in L that overlaps start..stop
-  var off = lowerBound(L.intervals, start - L.max_len)
+  let off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
-    var x = L.intervals[i]
+    let x = L.intervals[i]
     if x.overlap(start, stop):
       fn(x)
     elif x.start >= stop: break
@@ -176,7 +175,7 @@ proc seek*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
   while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
     L.cursor += 1
   for i in L.cursor..L.intervals.high:
-    var x = L.intervals[i]
+    let x = L.intervals[i]
     if x.overlap(start, stop):
       ivs.add(x)
     elif x.start >= stop: break
@@ -190,7 +189,7 @@ proc each_seek*[T:Interval](L:var Lapper[T], start:int, stop:int, fn:proc (v:T))
   while (L.cursor + 1) < L.intervals.high and L.intervals[L.cursor + 1].start < (start - L.max_len):
     L.cursor += 1
   for i in L.cursor..L.intervals.high:
-    var x = L.intervals[i]
+    let x = L.intervals[i]
     if x.start >= stop: break
     elif x.stop > start:
       fn(x)
