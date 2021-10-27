@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - 
+    family-names: Pedersen
+    given-names: Brent S.
+    email: bpederse@gmail.com
+
+title: "nim-lapper: fast, simple interval overlapping"
+version: 0.1.7
+date-released: 2021-01-01
+license: MIT
