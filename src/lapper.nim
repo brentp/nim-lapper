@@ -129,7 +129,6 @@ proc empty*[T:Interval](L:Lapper[T]): bool {.inline.} =
 iterator find*[T:Interval](L:var Lapper[T], start:int, stop:int): T =
   ## fill ivs with all intervals in L that overlap start .. stop.
   #if ivs.len != 0: ivs.set_len(0)
-  shallow(L.intervals)
   let off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     let x = L.intervals[i]
@@ -140,7 +139,6 @@ iterator find*[T:Interval](L:var Lapper[T], start:int, stop:int): T =
 proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bool =
   ## fill ivs with all intervals in L that overlap start .. stop.
   #if ivs.len != 0: ivs.set_len(0)
-  shallow(L.intervals)
   let off = lowerBound(L.intervals, start - L.max_len)
   var n = 0
   for i in off..L.intervals.high:
@@ -158,7 +156,6 @@ proc find*[T:Interval](L:var Lapper[T], start:int, stop:int, ivs:var seq[T]): bo
 
 proc count*[T:Interval](L:var Lapper[T], start:int, stop:int): int =
   ## fill ivs with all intervals in L that overlap start .. stop.
-  shallow(L.intervals)
   let off = lowerBound(L.intervals, start - L.max_len)
   for i in off..L.intervals.high:
     let x = L.intervals[i]
